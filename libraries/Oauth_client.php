@@ -37,7 +37,7 @@ class Oauth_client {
 		if ($csrf)
 		{
 			$token = md5(uniqid());
-			$this->session->set_userdata('oauth_csrf' => $token);
+			$this->session->set_userdata('oauth_csrf', $token);
 			
 			$state_params['oauth_csrf'] = $token;
 		}
@@ -45,7 +45,7 @@ class Oauth_client {
 		if (count($state_params) > 0)
 		{
 			$states = array();
-			foreach ($state_params as $k=>v)
+			foreach ($state_params as $k=>$v)
 			{
 				$states[] = $k . '=' . $v;
 			}
