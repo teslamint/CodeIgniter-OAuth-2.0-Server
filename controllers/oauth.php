@@ -209,7 +209,7 @@ class Oauth extends CI_Controller {
 			}
 		}
 		
-		$this->load->view('oauth_auth_server2/sign_in', $vars);
+		$this->load->view('oauth_auth_server/sign_in', $vars);
 		
 	}
 	
@@ -231,7 +231,7 @@ class Oauth extends CI_Controller {
 		
 		else
 		{
-			$this->load->view('oauth_auth_server2/sign_out');
+			$this->load->view('oauth_auth_server/sign_out');
 		}
 		
 	}
@@ -324,7 +324,7 @@ class Oauth extends CI_Controller {
 			
 			// Redirect back to app
 			$this->session->unset_userdata(array('params'=>'','client_details'=>'', 'sign_in_redirect'=>''));
-			$this->load->view('oauth_auth_server2/redirect', array('redirect_uri'=>$redirect_uri, 'client_name'=>$client->name));
+			$this->load->view('oauth_auth_server/redirect', array('redirect_uri'=>$redirect_uri, 'client_name'=>$client->name));
 		}
 		
 		// The user hasn't approved the application before and it's not an internal application
@@ -334,7 +334,7 @@ class Oauth extends CI_Controller {
 				'client_name' => $client->name
 			);
 			
-			$this->load->view('oauth_auth_server2/authorise', $vars);
+			$this->load->view('oauth_auth_server/authorise', $vars);
 		}
 	}
 	
