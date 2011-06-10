@@ -17,3 +17,17 @@ CREATE TABLE `oauth_sessions` (
   `limited` tinyint(1) default '0',
   PRIMARY KEY  (`id`)
 );
+
+CREATE TABLE `applications` (
+  `id` int(11) unsigned NOT NULL auto_increment,
+  `name` varchar(64) NOT NULL default '',
+  `client_id` varchar(32) NOT NULL default '',
+  `client_secret` varchar(32) NOT NULL default '',
+  `redirect_uri` text NOT NULL,
+  `developer_name` varchar(64) default NULL,
+  `developer_url` text,
+  `developer_email` text,
+  `auto_approve` tinyint(1) NOT NULL default '0',
+  PRIMARY KEY  (`id`),
+  UNIQUE KEY `client_id` (`client_id`)
+);
