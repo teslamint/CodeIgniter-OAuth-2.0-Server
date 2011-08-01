@@ -37,7 +37,7 @@ class Oauth_client {
 		if ($csrf)
 		{
 			$token = md5(uniqid());
-			$this->session->set_userdata('oauth_csrf', $token);
+			$this->ci->session->set_userdata('oauth_csrf', $token);
 			
 			$state_params['oauth_csrf'] = $token;
 		}
