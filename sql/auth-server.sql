@@ -42,3 +42,15 @@ CREATE TABLE `applications` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `client_id` (`client_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8;
+
+CREATE TABLE `scopes` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `scope` varchar(64) NOT NULL DEFAULT '',
+  `name` varchar(64) NOT NULL DEFAULT '',
+  `description` varchar(100) DEFAULT '',
+  `autonomous_only` tinyint(1) unsigned NOT NULL DEFAULT '0',
+  `data_rating` tinyint(1) unsigned NOT NULL DEFAULT '1',
+  `exclusive_set` int(8) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `scope` (`scope`)
+) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8;
