@@ -12,18 +12,21 @@ CREATE TABLE `oauth_session_scopes` (
 ) ENGINE=InnoDB AUTO_INCREMENT=430 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `oauth_sessions` (
-  `id` int(11) unsigned NOT NULL auto_increment,
-  `client_id` varchar(32) NOT NULL default '',
-  `redirect_uri` text NOT NULL,
-  `user_id` varchar(64) default NULL,
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `client_id` varchar(32) NOT NULL DEFAULT '',
+  `redirect_uri` varchar(250) NOT NULL DEFAULT '',
+  `type_id` varchar(64) DEFAULT NULL,
+  `type` enum('user','auto') NOT NULL DEFAULT 'user',
   `code` text,
-  `access_token` text,
-  `stage` enum('request','granted') NOT NULL default 'request',
+  `access_token` varchar(50) DEFAULT '',
+  `stage` enum('request','granted') NOT NULL DEFAULT 'request',
   `first_requested` int(10) unsigned NOT NULL,
   `last_updated` int(10) unsigned NOT NULL,
-  `limited` tinyint(1) default '0',
-  PRIMARY KEY  (`id`)
-);
+  `limited_access` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Used for user agent flows',
+  PRIMARY KEY (`id`),
+  KEY `client_id` (`client_id`),
+  CONSTRAINT `oauth_sessions_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `applications` (`client_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=161 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `applications` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
