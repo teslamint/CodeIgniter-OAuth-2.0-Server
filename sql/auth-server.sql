@@ -1,8 +1,15 @@
 CREATE TABLE `oauth_session_scopes` (
-  `session_id` int(11) NOT NULL,
-  `access_token` text,
-  `scope` varchar(64) NOT NULL default ''
-);
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `session_id` int(11) unsigned NOT NULL,
+  `access_token` varchar(50) NOT NULL DEFAULT '',
+  `scope` varchar(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `session_id` (`session_id`),
+  KEY `scope` (`scope`),
+  KEY `access_token` (`access_token`),
+  CONSTRAINT `oauth_session_scopes_ibfk_1` FOREIGN KEY (`scope`) REFERENCES `scopes` (`scope`),
+  CONSTRAINT `oauth_session_scopes_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `oauth_sessions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=430 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `oauth_sessions` (
   `id` int(11) unsigned NOT NULL auto_increment,
