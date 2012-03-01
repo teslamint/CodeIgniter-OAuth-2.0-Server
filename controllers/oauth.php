@@ -1,6 +1,6 @@
-<?php
+<?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 /**
- * OAuth 2.0 client for use with the included auth server
+ * OAuth 2.0 server for use with the included auth server
  *
  * @author              Alex Bilbie | www.alexbilbie.com | alex@alexbilbie.com
  * @copyright   		Copyright (c) 2011, Alex Bilbie.
@@ -8,162 +8,172 @@
  * @link                https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server
  * @version             Version 0.2
  */
- 
-/*
-	Copyright (c) 2011 Alex Bilbie | alex@alexbilbie.com
-	
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-	
-	The above copyright notice and this permission notice shall be included in
-	all copies or substantial portions of the Software.
-	
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-	THE SOFTWARE.
-*/
 
-class Oauth extends CI_Controller {
+class Oauth extends CI_Controller
+{
 		
+	/**
+	 * __construct function.
+	 * 
+	 * @access public
+	 */
 	function __construct()
 	{
 		parent::__construct();
-		
 		$this->load->helper('url');
-		$this->load->library('oauth_auth_server');
+		$this->load->library('oauth_server');
+		
+		// Initialise a session item to keep IE happy
+		$this->session->set_userdata('init', uniqid());
 	}
 	
-		
 	/**
 	 * This is the function that users are sent to when they first enter the flow
 	 */
 	function index()
 	{
 		// Get query string parameters
-		// ?response_type=code&client_id=XXX&redirect_uri=YYY&scope=ZZZ&state=123
-		$params = $this->oauth_auth_server->validate_params(array('response_type'=>array('code', 'token'), 'client_id'=>TRUE, 'redirect_uri'=>TRUE, 'scope'=>FALSE, 'state'=>FALSE)); // returns array or FALSE
+		$params = array();
 		
-		// If missing/bad parameter
-		if ($params == FALSE)
+		// Client id
+		if ($client_id = $this->input->get('client_id'))
 		{
-			$this->_fail('[OAuth client error: invalid_request] The request is missing a required parameter, includes an unsupported parameter or parameter value, or is otherwise malformed.', TRUE);
+			$params['client_id'] = trim($client_id);
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See client_id.', NULL, array(), 400);
+		}
+		
+		// Client redirect uri
+		if ($redirect_uri = $this->input->get('redirect_uri'))
+		{
+			$params['redirect_uri'] = trim($redirect_uri);
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See redirect_uri.', NULL, array(), 400);
+			return;
+		}
+		
+		// Validate the response type
+		if ($response_type = $this->input->get('response_type'))
+		{
+			$response_type = trim($response_type);
+			$valid_response_types = array('code'); // array to allow for future expansion
+			
+			if ( ! in_array($response_type, $valid_response_types))
+			{
+				$this->_fail('unsupported_response_type', 'The authorization server does not support obtaining the an authorization code using this method. Supported response types are \'' . implode('\' or ', $valid_response_type) . '\'.', $params['redirect_uri'], array(), 400);
+				return;
+			}
+			
+			else
+			{
+				$params['response_type'] = $response_type;
+			}
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See response_type.', NULL, array(), 400);
 			return;
 		}
 				
 		// Validate client_id and redirect_uri
-		$client_details = $this->oauth_auth_server->validate_client($params['client_id'], NULL, $params['redirect_uri']); // returns object or FALSE
+		$client_details = $this->oauth_server->validate_client($params['client_id'], NULL, $params['redirect_uri']); // returns object or FALSE
+		
 		if ($client_details === FALSE )
 		{
-			$this->_fail("[OAuth client error: unauthorized_client] The client is not authorised to request an authorization code using this method.", TRUE);
+			$this->_fail('unauthorized_client', 'The client is not authorized to request an authorization code using this method.', NULL, array(), 403);
 			return;
 		}
+		
+		else
+		{
+			// The client is valid, save the details to the session
+			$this->session->set_userdata('client_details', $client_details);
+		}
+
+		
+		// Get and validate the scope(s)
+		if ($scope_string = $this->input->get('scope'))
+		{
+			$scopes = explode(',', $scope_string);
+			$params['scope'] = $scopes;
+		}
+		
+		else
+		{
+			$params['scope'] = array();
+		}
+		
+		// Check scopes are valid
+		if (count($params['scope']) > 0)
+		{
+			foreach($params['scope'] as $s)
+			{
+				$exists = $this->oauth_server->scope_exists($s);
+				if ( ! $exists)
+				{
+					$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See scope \''.$s.'\'.', NULL, array(), 400);
+					return;
+				}
+			}
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See scope.', NULL, array(), 400);
+			return;
+		}
+
+		// The client is valid, save the details to the session
 		$this->session->set_userdata('client_details', $client_details);
 		
 		// Get the scope
-		if (isset($params['scope']) && count($params['scope']) > 0)
+		if ($state = $this->input->get('state'))
 		{
-			$params['scope'] = explode(',', $params['scope']);
-			if ( ! in_array('basic', $params['scope']))
-			{
-				// Add basic scope regardless
-				$params['scope'][] = 'basic';
-			}
-		}
-		else
-		{
-			// Add basic scope regardless
-			$params['scope'] = array(
-				'basic'
-			);
+			$params['state'] = trim($state);
 		}
 		
-		// Save the params in the session
-		$this->session->set_userdata(array('params'=>$params));
+		else
+		{
+			$params['state'] = '';
+		}
 
-		// Check if user is signed in already
-		$user_id = $this->session->userdata('user_id'); // returns string or FALSE
-				
-		// If the user is already signed in and the app has the flag 'auto_approve'
-		// Then generate a new auth code and redirect the user back to the application
-		if ($user_id && $client_details->auto_approve == 1)
-		{
-			if ($params['response_type'] == 'token') // user agent flow
-			{
-				$this->fast_token_redirect($client_details->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-			}
-			else // web server flow
-			{
-				$this->fast_code_redirect($client_details->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-			}
-		}
+		// Save the params in the session
+		$this->session->set_userdata(array('params' => $params));
 		
-		// Has the user authorised the application already?
-		if ($user_id)
-		{
-			$authorised = $this->oauth_auth_server->access_token_exists($user_id, $params['client_id']); // return TRUE or FALSE
-			
-			// If there is already an access token then the user has authorised the application
-			// Generate a new auth code and redirect the user back to the application
-			if ($authorised)
-			{
-				if ($params['response_type'] == 'token') // user agent flow
-				{
-					$this->fast_token_redirect($client_details->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-				}
-				else // web server flow
-				{
-					$this->fast_code_redirect($client_details->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-				}
-			}
-						
-			// The user hasn't authorised the application. Send them to the authorise page.
-			else
-			{
-				redirect(site_url(array('oauth', 'authorise')), 'location');
-			}
-		}
-		
-		// The user is not signed in, send them to sign in
-		else
-		{
-			$this->session->set_userdata('sign_in_redirect', array('oauth', 'authorise'));
-			redirect(site_url(array('oauth', 'sign_in')), 'location');
-		}
+		// Redirect the user to sign in
+		redirect(site_url(array('oauth', 'sign_in')), 'location');
 	}
 	
-	
-	/**
-	 * If the user isn't signed in they will be redirect here
-	 */
 	function sign_in()
 	{
-		// Check if user is signed in, if so redirect them on to /authorise
 		$user_id = $this->session->userdata('user_id');
-		if ($user_id)
+		$client = $this->session->userdata('client_details');
+
+		// Check if user is signed in, if so redirect them on to /authorise
+		if ($user_id && $client)
 		{
-			redirect(site_url($this->session->userdata('sign_in_redirect')), 'location');
+			redirect(site_url(array('oauth','authorise')), 'location');
 		}
 		
 		// Check there is are client parameters are stored
-		$client = $this->session->userdata('client_details'); // returns object or FALSE
 		if ($client == FALSE)
 		{
-			$this->_fail('[OAuth user error: invalid_request] No client details have been saved. Have you deleted your cookies?', TRUE);
+			$this->_fail('invalid_request', 'No client details have been saved. Have you deleted your cookies?', NULL, array(), 400);
 			return;
 		}
 		
 		// Errors
 		$vars = array(
 			'error' => FALSE,
-			'error_messages' => array()
+			'error_messages' => array(),
+			'client_name' => $client->name
 		);
 		
 		// If the form has been posted
@@ -172,7 +182,7 @@ class Oauth extends CI_Controller {
 			$u = trim($this->input->post('username', TRUE));
 			$p = trim($this->input->post('password', TRUE));
 			
-			// Validate
+			// Validate username and password
 			if ($u == FALSE || empty($u))
 			{
 				$vars['error_messages'][] = 'The username field should not be empty';
@@ -188,9 +198,9 @@ class Oauth extends CI_Controller {
 			// Check login and get credentials
 			if ($vars['error'] == FALSE)
 			{
-				$user_id = $this->oauth_auth_server->validate_user($u, $p);
+				$user = $this->oauth_server->validate_user($u, $p);
 				
-				if ($user_id == FALSE)
+				if ($user == FALSE)
 				{
 					$vars['error_messages'][] = 'Invalid username and/or password';
 					$vars['error'] = TRUE;
@@ -198,27 +208,30 @@ class Oauth extends CI_Controller {
 				
 				else
 				{
-					$this->session->set_userdata(array('user_id' => $user_id));
+					$this->session->set_userdata(array(
+						'user_id' => $user->id,
+						'user_name' => $user->name,
+						'user_email' => $user->email,
+						'non_ad_user' => TRUE
+					));
 				}
 			}
 			
-			// If there is no error
+			// If there is no error then the user has successfully signed in
 			if ($vars['error'] == FALSE)
 			{
-				redirect(site_url($this->session->userdata('sign_in_redirect')), 'location');
+				redirect(site_url(array('oauth','authorise')), 'location');
 			}
 		}
 		
-		$this->load->view('oauth_auth_server/sign_in', $vars);
-		
+		$this->load->view('inc/head');
+		$this->load->view('oauth/sign_in', $vars);	
+		$this->load->view('inc/foot');
 	}
 	
 	
 	/**
 	 * Sign the user out of the SSO service
-	 * 
-	 * @access public
-	 * @return void
 	 */
 	function sign_out()
 	{
@@ -231,7 +244,7 @@ class Oauth extends CI_Controller {
 		
 		else
 		{
-			$this->load->view('oauth_auth_server/sign_out');
+			$this->load->view('oauth_server/sign_out');
 		}
 		
 	}
@@ -242,8 +255,11 @@ class Oauth extends CI_Controller {
 	 */
 	function authorise()
 	{
-		// Check if the user is signed in
 		$user_id = $this->session->userdata('user_id');
+		$client = $this->session->userdata('client_details');
+		$params = $this->session->userdata('params');
+		
+		// Check if the user is signed in
 		if ($user_id == FALSE)
 		{
 			$this->session->set_userdata('sign_in_redirect', array('oauth', 'authorise'));
@@ -251,207 +267,228 @@ class Oauth extends CI_Controller {
 		}
 		
 		// Check the client params are stored
-		$client = $this->session->userdata('client_details');
 		if ($client == FALSE)
 		{
-			$this->_fail('[OAuth user error: invalid_request] No client details have been saved. Have you deleted your cookies?', TRUE);
+			$this->_fail('invalid_request', 'No client details have been saved. Have you deleted your cookies?', NULL, array(), 400);
 			return;
 		}
 		
-		// The GET parameters
-		$params = $this->session->userdata('params');
+		// Check the request parameters are still stored
 		if ($params == FALSE)
 		{
-			$this->_fail('[OAuth user error: invalid_request] No OAuth parameters have been saved. Have you deleted your cookies?', TRUE);
+			$this->_fail('invalid_request', 'No client details have been saved. Have you deleted your cookies?', NULL, array(), 400);
 			return;
 		}
 		
-		// If the user is signed in and the they have approved the application
-		// Then generate a new auth code and redirect the user back to the application
-		$authorised = $this->oauth_auth_server->access_token_exists($user_id, $client->client_id);
-		if ($authorised)
-		{
-			if ($params['response_type'] == 'token') // user agent flow
-			{
-				$this->fast_token_redirect($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-			}
-			else // web server flow
-			{
-				$this->fast_code_redirect($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-			}	
-		}
-		
-		// If the user is already signed in and the app has the flag 'auto_approve'
-		// Then generate a new auth code and redirect the user back to the application
-		elseif ($user_id && $client->auto_approve == 1)
-		{			
-			if ($params['response_type'] == 'token') // user agent flow
-			{
-				$this->fast_token_redirect($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-			}
-			else // web server flow
-			{
-				$this->fast_code_redirect($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $params['state']);
-			}
-		}
-		
-		// If we've not redirected already we need to show the user the approval form
-		
-		// Has the user clicked the authorise button
+		// Has the user authorised the application?
 		$doauth = $this->input->post('doauth');
-		
 		if ($doauth)
 		{		
 			switch($doauth)
 			{
 				// The user has approved the application.
-				// Generate a new auth code and redirect the user back to the application
 				case "Approve":
-								
-					$code = $this->oauth_auth_server->new_auth_code($client->client_id, $user_id, $params['redirect_uri'], $params['scope']);
-					$redirect_uri = $this->oauth_auth_server->redirect_uri($params['redirect_uri'], array('code='.$code.'&state='.$params['state']));									
+					$authorised = FALSE;
+					$action = 'newrequest';		
 				break;
 				
 				// The user has denied the application
-				// Do a low redirect back to the application with the error
 				case "Deny":
 				
-					// Append the error code
-					$redirect_uri = $this->oauth_auth_server->redirect_uri($params['redirect_uri'], array('error=access_denied&error_description=The+authorization+server+does+not+support+obtaining+an+authorization+code+using+this+method&state='.$params['state']));									
+					$error_params = array(
+						'error' => 'access_denied',
+						'error_description' => 'The resource owner or authorization server denied the request.'
+					);
+					if ($params['state']){ $error_params['state'] = $params['state']; }				
+					
+					$redirect_uri = $this->oauth_server->redirect_uri($params['redirect_uri'], implode('&', $error_params));
+					$this->session->unset_userdata(array('params'=>'','client_details'=>'', 'sign_in_redirect'=>''));
+					redirect($redirect_uri, 'location');
+					
 				break;
 				
 			}
-			
-			// Redirect back to app
-			$this->session->unset_userdata(array('params'=>'','client_details'=>'', 'sign_in_redirect'=>''));
-			$this->load->view('oauth_auth_server/redirect', array('redirect_uri'=>$redirect_uri, 'client_name'=>$client->name));
 		}
 		
-		// The user hasn't approved the application before and it's not an internal application
 		else
 		{
-			$vars = array(
-				'client_name' => $client->name
-			);
+			// Does the user already have an access token?
+			$authorised = $this->oauth_server->access_token_exists($user_id, $client->client_id);
 			
-			$this->load->view('oauth_auth_server/authorise', $vars);
+			if ($authorised)
+			{
+				$match = $this->oauth_server->validate_access_token($authorised->access_token, $params['scope']);
+				$action = $match ? 'finish' : 'approve';
+			}
+			
+			else
+			{
+				// Can the application be auto approved?
+				$action = ($client->auto_approve == 1) ? 'newrequest' : 'approve';
+			}
+		}
+		
+		switch ($action)
+		{
+			case 'approve':
+			
+				$requested_scopes = $params['scope'];
+				$scopes = $this->oauth_server->scope_details($requested_scopes);
+			
+				$vars = array(
+					'client_name' => $client->name,
+					'scopes' => $scopes
+				);
+				
+				$this->load->view('inc/head');
+				$this->load->view('oauth/authorise', $vars);
+				$this->load->view('inc/foot');
+			
+			break;
+			
+			case 'newrequest':
+			
+				$code = $this->oauth_server->new_auth_code($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $authorised->access_token);
+				
+				$this->fast_code_redirect($params['redirect_uri'], $params['state'], $code);
+			
+			break;
+			
+			case 'finish':
+
+				$code = $this->oauth_server->new_auth_code($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $authorised->access_token);
+				
+				$this->fast_token_redirect($params['redirect_uri'], $params['state'], $code);
+				
+			break;
 		}
 	}
-	
 	
 	/**
 	 * Generate a new access token
 	 */
 	function access_token()
 	{
-		// Get query string parameters
-		// ?grant_type=authorization_code&client_id=XXX&client_secret=YYY&redirect_uri=ZZZ&code=123
-		$params = $this->oauth_auth_server->validate_params(array('code'=>TRUE, 'client_id'=>TRUE, 'client_secret' => TRUE, 'grant_type' => array('authorization_code') ,'redirect_uri'=>TRUE));
-		
-		// If missing/bad param
-		if ($params == FALSE)
-		{
-			$this->_fail($this->oauth_auth_server->param_error);
-			return;
-		}
+		// Get post query string parameters
+		$params = array();
 				
-		// Validate client_id and redirect_uri
-		$client_details = $this->oauth_auth_server->validate_client($params['client_id'], NULL, $params['redirect_uri']); // returns object or FALSE
-		if ($client_details === FALSE )
+		// Client id
+		if ($client_id = $this->input->post('client_id'))
 		{
-			$this->_fail("[OAuth client error: unauthorized_client] The client is not authorised to request an authorization code using this method.", TRUE);
-			return;
-		}
-		
-		// Respond to the grant type
-		switch($params['grant_type'])
-		{
-			case "authorization_code":
-			
-				// Validate the auth code
-				$session_id = $this->oauth_auth_server->validate_auth_code($params['code'], $params['client_id'], $params['redirect_uri']);
-				if ($session_id === FALSE)
-				{
-					$this->_fail("[OAuth client error: invalid_request] Invalid authorization code");
-					return;
-				}
-				
-				// Generate a new access_token (and remove the authorise code from the session)
-				$access_token = $this->oauth_auth_server->get_access_token($session_id);
-				
-				// Send the response back to the application
-				$this->_response(array('access_token' => $access_token, 'token_type' => '', 'expires_in' => NULL, 'refresh_token' => NULL));
-				return;
-			
-			break;
-
-			// When refresh tokens are implemented the logic would go here
-		}	
-	}
-		
-	
-	/**
-	 * Resource servers will make use of this URL to validate an access token
-	 */
-	function verify_access_token()
-	{
-		// Get query string parameters
-		// ?grant_type=access_token=XXX&scope=YYY
-		$params = $this->oauth_auth_server->validate_params(array('access_token'=>TRUE, 'scope'=>FALSE));
-		
-		// If missing/bad param
-		if ($params == FALSE)
-		{
-			$this->_fail($this->oauth_auth_server->param_error);
-			return;
-		}
-						
-		// Get the scope
-		$scopes = array('basic');
-		if (isset($params['scope']))
-		{
-			$scopes = explode(',', $params['scope']);
-		}
-		
-		// Test scope
-		$result = $this->oauth_auth_server->validate_access_token($params['access_token'], $scopes);
-		
-		if ($result)
-		{		
-			$resp = array(
-				'access_token'=>$params['access_token'],
-			);
-			
-			$this->_response($resp);
+			$params['client_id'] = trim($client_id);
 		}
 		
 		else
 		{
-			$this->_fail('Invalid `access_token`', FALSE);
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See client_id.', NULL, array(), 400, 'json');
 			return;
 		}
 		
+		// Client secret
+		if ($client_secret = $this->input->post('client_secret'))
+		{
+			$params['client_secret'] = trim($client_secret);
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See client_secret.', NULL, array(), 400, 'json');
+			return;
+		}
+				
+		// Client redirect uri
+		if ($redirect_uri = $this->input->post('redirect_uri'))
+		{
+			$params['redirect_uri'] = urldecode(trim($redirect_uri));
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See redirect_uri.', NULL, array(), 400, 'json');
+			return;
+		}
+		
+		if ($code = $this->input->post('code'))
+		{
+			$params['code'] = trim($code);
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See code.', NULL, array(), 400, 'json');
+			return;
+		}
+		
+		// Validate the grant type
+		if ($grant_type = $this->input->post('grant_type'))
+		{
+			$grant_type = trim($grant_type);
+			
+			if ( ! in_array($grant_type, array('authorization_code')))
+			{
+				$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See grant_type.', NULL, array(), 400, 'json');
+				return;
+			}
+			
+			else
+			{
+				$params['grant_type'] = $grant_type;
+			}
+		}
+		
+		else
+		{
+			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See grant_type.', NULL, array(), 400, 'json');
+			return;
+		}
+				
+		// Validate client_id and redirect_uri
+		$client_details = $this->oauth_server->validate_client($params['client_id'], $params['client_secret'], $params['redirect_uri']); // returns object or FALSE
+		
+		if ($client_details === FALSE )
+		{
+			$this->_fail('unauthorized_client', 'The client is not authorized to request an authorization code using this method', NULL, array(), 403, 'json');
+			return;
+		}
+		
+		// Respond to the grant type
+		switch ($params['grant_type'])
+		{
+			case "authorization_code":
+			
+				// Validate the auth code
+				$session = $this->oauth_server->validate_auth_code($params['code'], $params['client_id'], $params['redirect_uri']);
 
-	}
-	
+				if ($session === FALSE)
+				{
+					$this->_fail('invalid_request', 'The authorization code is invalid.', NULL, array(), 403, 'json');
+					return;
+				}
+				
+				// Generate a new access_token (and remove the authorise code from the session)
+				$access_token = $this->oauth_server->get_access_token($session->id);
+				
+				// Send the response back to the application
+				$this->_response(array('access_token' => $access_token));
+				return;
+			
+			break;
+		}
+	}	
 	
 	/**
 	 * Generates a new auth code and redirects the user
 	 * Used in the web-server flow
 	 * 
 	 * @access private
-	 * @param string $client_id
-	 * @param string $user_id
 	 * @param string $redirect_uri
-	 * @param array $scope
 	 * @param string $state
+	 * @param string $code
 	 * @return void
 	 */
-	private function fast_code_redirect($client_id = "", $user_id = "", $redirect_uri = "", $scopes = array(), $state = "")
+	private function fast_code_redirect($redirect_uri = '', $state = '', $code = '')
 	{
-		$code = $this->oauth_auth_server->new_auth_code($client_id, $user_id, $redirect_uri, $scopes);
-		$redirect_uri = $this->oauth_auth_server->redirect_uri($redirect_uri, array('code='.$code."&state=".$state));
-		
+		$redirect_uri = $this->oauth_server->redirect_uri($redirect_uri, array('code' => $code, 'state' => $state));
 		$this->session->unset_userdata(array('params'=>'','client_details'=>'', 'sign_in_redirect'=>''));
 		redirect($redirect_uri, 'location');	
 	}
@@ -461,19 +498,14 @@ class Oauth extends CI_Controller {
 	 * Used in the user-agent flow
 	 * 
 	 * @access private
-	 * @param string $client_id
-	 * @param string $user_id
 	 * @param string $redirect_uri
-	 * @param array $scope
 	 * @param string $state
+	 * @param string $code
 	 * @return void
 	 */
-	private function fast_token_redirect($client_id = "", $user_id = "", $redirect_uri = "", $scopes = array(), $state = "")
+	private function fast_token_redirect($redirect_uri = '', $state = '', $code = '')
 	{
-		// Creates a limited access token due to lack of verification/authentication
-		$token = $this->oauth_auth_server->new_auth_code($client_id, $user_id, $redirect_uri, $scopes, 1);
-		$redirect_uri = $this->oauth_auth_server->redirect_uri($redirect_uri, array('code='.$code."&state=".$state), '#');
-		
+		$redirect_uri = $this->oauth_server->redirect_uri($redirect_uri, array('code' => $code, 'state' => $state), '#');
 		$this->session->unset_userdata(array('params'=>'','client_details'=>'', 'sign_in_redirect'=>''));
 		redirect($redirect_uri, 'location');	
 	}
@@ -486,18 +518,40 @@ class Oauth extends CI_Controller {
 	 * @param mixed $msg
 	 * @return string
 	 */
-	private function _fail($msg, $friendly=FALSE)
+	
+	private function _fail($error, $description, $url = NULL, $params = array(), $status = 400, $output = 'html')
 	{
-		if ($friendly)
+		if ($url)
 		{
-			show_error($msg, 500);
+			$error_params = array(
+				'error=' . $error,
+				'error_description=' . urlencode($description)
+			);
+						
+			$params = array_merge($params, $error_params);
+			
+			$this->oauth_server->redirect_uri($url, $params);
+
 		}
 		
 		else
 		{
-			$this->output->set_status_header('500');
-			$this->output->set_header('Content-type: text/plain');
-			$this->output->set_output(json_encode(array('error'=>1, 'error_message'=>$msg)));
+			switch ($output)
+			{
+				case 'html':
+				default:
+					show_error('[OAuth error: ' . $error . '] ' . $description, $status);
+				break;
+				case 'json':
+					$this->output->set_status_header($status);
+					$this->output->set_output(json_encode(array(
+						'error'			=>	1,
+						'error_message'	=>	'[OAuth error: ' . $error . '] ' . $description,
+						'access_token'	=>	NULL
+					)));
+				break;
+			}
+			
 		}
 	}
 	
@@ -514,7 +568,7 @@ class Oauth extends CI_Controller {
 		$msg['error'] = 0;
 		$msg['error_message'] = '';
 		$this->output->set_status_header('200');
-		$this->output->set_header('Content-type: text/plain');
+		$this->output->set_header('Content-type: application/json');
 		$this->output->set_output(json_encode($msg));	
 	}
 
