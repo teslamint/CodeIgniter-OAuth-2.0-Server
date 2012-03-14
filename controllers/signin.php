@@ -36,24 +36,22 @@ class Signin extends CI_Controller {
 	function __construct()
 	{
 		parent::__construct();
+		$this->load->library('oauth_client');
 	}
 		
 	function index()
 	{
-		$this->load->library('oauth_client');
 		$this->oauth_client->sign_in();
 	}
 	
 	function signout()
 	{
-		$this->load->library('oauth_client');
 		$this->session->sess_destroy();
 		$this->oauth_client->sign_out();
 	}
 	
 	function redirect()
 	{
-		$this->load->library('oauth_client');
 		
 		// If there was a problem with the auth server or the user declined your application there will be an error
 		if ($this->input->get('error'))
