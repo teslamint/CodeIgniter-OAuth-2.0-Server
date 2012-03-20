@@ -2,7 +2,7 @@
 
 ## Please visit https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server/tree/v2
 
-##Please ensure any new bugs have been tested on this new version
+### Please ensure any new bugs have been tested on this new version
 
 
 This is an implementation of an OAuth 2.0 (draft 13) authorisation server, resource server and client.
