@@ -1,33 +1,53 @@
-CREATE TABLE `oauth_session_scopes` (
-  `session_id` int(11) NOT NULL,
-  `access_token` text,
-  `scope` varchar(64) NOT NULL default ''
-);
+CREATE TABLE `applications` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(64) NOT NULL DEFAULT '',
+  `client_id` VARCHAR(32) NOT NULL DEFAULT '',
+  `client_secret` VARCHAR(32) NOT NULL DEFAULT '',
+  `redirect_uri` VARCHAR(250) NOT NULL DEFAULT '',
+  `auto_approve` TINYINT(1) NOT NULL DEFAULT '0',
+  `autonomous` TINYINT(1) NOT NULL DEFAULT '0',
+  `status` ENUM('development','pending','approved','rejected') NOT NULL DEFAULT 'development',
+  `suspended` TINYINT(1) NOT NULL DEFAULT '0',
+  `notes` TINYTEXT,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `client_id` (`client_id`)
+) ENGINE=INNODB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8;
+
+CREATE TABLE `scopes` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `scope` VARCHAR(64) NOT NULL DEFAULT '',
+  `name` VARCHAR(64) NOT NULL DEFAULT '',
+  `description` VARCHAR(100) DEFAULT '',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `scope` (`scope`)
+) ENGINE=INNODB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `oauth_sessions` (
-  `id` int(11) unsigned NOT NULL auto_increment,
-  `client_id` varchar(32) NOT NULL default '',
-  `redirect_uri` text NOT NULL,
-  `user_id` varchar(64) default NULL,
-  `code` text,
-  `access_token` text,
-  `stage` enum('request','granted') NOT NULL default 'request',
-  `first_requested` int(10) unsigned NOT NULL,
-  `last_updated` int(10) unsigned NOT NULL,
-  `limited` tinyint(1) default '0',
-  PRIMARY KEY  (`id`)
-);
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `client_id` VARCHAR(32) NOT NULL DEFAULT '',
+  `redirect_uri` VARCHAR(250) NOT NULL DEFAULT '',
+  `type_id` VARCHAR(64) DEFAULT NULL,
+  `type` ENUM('user','auto') NOT NULL DEFAULT 'user',
+  `code` TEXT,
+  `access_token` VARCHAR(50) DEFAULT '',
+  `stage` ENUM('request','granted') NOT NULL DEFAULT 'request',
+  `first_requested` INT(10) UNSIGNED NOT NULL,
+  `last_updated` INT(10) UNSIGNED NOT NULL,
+  `limited_access` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Used for user agent flows',
+  PRIMARY KEY (`id`),
+  KEY `client_id` (`client_id`),
+  CONSTRAINT `oauth_sessions_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `applications` (`client_id`) ON DELETE CASCADE
+) ENGINE=INNODB AUTO_INCREMENT=161 DEFAULT CHARSET=utf8;
 
-CREATE TABLE `applications` (
-  `id` int(11) unsigned NOT NULL auto_increment,
-  `name` varchar(64) NOT NULL default '',
-  `client_id` varchar(32) NOT NULL default '',
-  `client_secret` varchar(32) NOT NULL default '',
-  `redirect_uri` text NOT NULL,
-  `developer_name` varchar(64) default NULL,
-  `developer_url` text,
-  `developer_email` text,
-  `auto_approve` tinyint(1) NOT NULL default '0',
-  PRIMARY KEY  (`id`),
-  UNIQUE KEY `client_id` (`client_id`)
-);
+CREATE TABLE `oauth_session_scopes` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `session_id` INT(11) UNSIGNED NOT NULL,
+  `access_token` VARCHAR(50) NOT NULL DEFAULT '',
+  `scope` VARCHAR(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `session_id` (`session_id`),
+  KEY `scope` (`scope`),
+  KEY `access_token` (`access_token`),
+  CONSTRAINT `oauth_session_scopes_ibfk_1` FOREIGN KEY (`scope`) REFERENCES `scopes` (`scope`),
+  CONSTRAINT `oauth_session_scopes_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `oauth_sessions` (`id`) ON DELETE CASCADE
+) ENGINE=INNODB AUTO_INCREMENT=430 DEFAULT CHARSET=utf8;
