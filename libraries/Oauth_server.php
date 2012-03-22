@@ -170,8 +170,7 @@ class Oauth_server {
 		
 		else
 		{
-			$result = $validate->row();
-			return $result;
+			return $validate->row();
 		}
 	}
 	
