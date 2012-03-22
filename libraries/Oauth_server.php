@@ -1,4 +1,13 @@
-<?php defined('BASEPATH') OR exit('No direct script access allowed');
+<?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+/**
+ * OAuth 2.0 authorisation server library
+ *
+ * @author              Alex Bilbie | www.alexbilbie.com | alex@alexbilbie.com
+ * @copyright   		Copyright (c) 2012, Alex Bilbie.
+ * @license             http://www.opensource.org/licenses/mit-license.php
+ * @link                https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server
+ * @version             Version 0.2
+ */
 
 class Oauth_server {
 
