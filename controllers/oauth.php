@@ -66,7 +66,7 @@ class Oauth extends CI_Controller
 			
 			if ( ! in_array($response_type, $valid_response_types))
 			{
-				$this->_fail('unsupported_response_type', 'The authorization server does not support obtaining the an authorization code using this method. Supported response types are \'' . implode('\' or ', $valid_response_type) . '\'.', $params['redirect_uri'], array(), 400);
+				$this->_fail('unsupported_response_type', 'The authorization server does not support obtaining an authorization code using this method. Supported response types are \'' . implode('\' or ', $valid_response_type) . '\'.', $params['redirect_uri'], array(), 400);
 				return;
 			}
 			
