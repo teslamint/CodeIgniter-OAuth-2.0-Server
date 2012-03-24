@@ -1,42 +1,48 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 /**
  * OAuth 2.0 authorisation server library
- *
- * @author              Alex Bilbie | www.alexbilbie.com | alex@alexbilbie.com
- * @copyright   		Copyright (c) 2012, Alex Bilbie.
- * @license             http://www.opensource.org/licenses/mit-license.php
- * @link                https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server
- * @version             Version 0.2
+ * 
+ * @category  Library
+ * @package   CodeIgniter
+ * @author    Alex Bilbie <alex@alexbilbie.com>
+ * @copyright 2012 Alex Bilbie
+ * @license   MIT Licencse http://www.opensource.org/licenses/mit-license.php
+ * @version   Version 0.2
+ * @link      https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server
  */
-
-class Oauth_server {
-
+class Oauth_server
+{
+	/**
+	 * CodeIgniter instance.
+	 * 
+	 * @var $ci
+	 * @access public
+	 */
 	protected $ci;
 
 	/**
-	 * Constructor.
+	 * Constructor
 	 * 
 	 * @access public
+	 * @return void
 	 */
-	function __construct()
+
+	public function __construct()
 	{
 		$this->ci = get_instance();
 	}
-	
-	/**************************************************************
-	//! Client stuff
-	**************************************************************/
-	
+		
 	/**
 	 * Validates a client's credentials
 	 * 
+	 * @param string $client_id     The client ID
+	 * @param mixed  $client_secret The client secred
+	 * @param mixed  $redirect_uri  The redirect URI
+	 * 
 	 * @access public
-	 * @param string $client_id
-	 * @param mixed $client_secret
-	 * @param mixed $redirect_uri
 	 * @return bool|object
 	 */
-	function validate_client($client_id = "", $client_secret = NULL, $redirect_uri = NULL)
+	public function validate_client($client_id = '', $client_secret = NULL, $redirect_uri = NULL)
 	{
 		$params = array(
 			'client_id' => $client_id,
@@ -56,7 +62,7 @@ class Oauth_server {
 										->select(array('name', 'client_id', 'auto_approve'))
 										->get_where('applications', $params);
 						
-		if ($client_check_query->num_rows() == 1)
+		if ($client_check_query->num_rows() === 1)
 		{
 			return $client_check_query->row();
 		}
@@ -66,26 +72,23 @@ class Oauth_server {
 			return FALSE;
 		}
 	}
-	
-	/**************************************************************
-	//! Auth code stuff
-	**************************************************************/
-
-	
+		
 	/**
 	 * Generates a new authorise code once a user has approved an application
 	 * 
+	 * @param mixed $client_id    The client ID
+	 * @param mixed $user_id      The user ID
+	 * @param mixed $redirect_uri The client redirect URI
+	 * @param array $scopes       The scopes that the client is requesting
+	 * @param mixed $access_token Optional access token to be updated with a new authorisation code
+	 * 
 	 * @access public
-	 * @param mixed $client_id
-	 * @param mixed $user_id
-	 * @param mixed $redirect_uri
-	 * @param array $scopes
 	 * @return string
 	 */
-	function new_auth_code($client_id = '', $user_id = '', $redirect_uri = '', $scopes = array(), $access_token = NULL)
+	public function new_auth_code($client_id = '', $user_id = '', $redirect_uri = '', $scopes = array(), $access_token = NULL)
 	{		
 		// Update an existing session with the new code
-		if ($access_token)
+		if ($access_token !== NULL)
 		{
 			$code = md5(time().uniqid());
 			
@@ -138,7 +141,7 @@ class Oauth_server {
 			{
 				$scope = trim($scope);
 				
-				if(trim($scope) !== "")
+				if(trim($scope) !== '')
 				{
 					$this->ci->db
 								->insert('oauth_session_scopes', array(
@@ -154,15 +157,16 @@ class Oauth_server {
 	
 	
 	/**
-	 * validate_auth_code function.
+	 * Validate the authorisation code
+	 * 
+	 * @param string $code         The authorisation code
+	 * @param string $client_id    The client ID
+	 * @param string $redirect_uri The client redirect URI
 	 * 
 	 * @access public
-	 * @param string $code
-	 * @param string $client_id
-	 * @param string $redirect_uri
-	 * @return bool|int
+	 * @return bool if the authorisation code is invalid, return object otherwise
 	 */
-	function validate_auth_code($code = '', $client_id = '', $redirect_uri = '')
+	public function validate_auth_code($code = '', $client_id = '', $redirect_uri = '')
 	{
 		$validate = $this->ci->db
 								->select(array('id', 'type_id'))
@@ -172,7 +176,7 @@ class Oauth_server {
 									'code'			=> $code
 								));
 		
-		if ($validate->num_rows() == 0)
+		if ($validate->num_rows() === 0)
 		{
 			return FALSE;
 		}
@@ -183,17 +187,15 @@ class Oauth_server {
 		}
 	}
 	
-	/**************************************************************
-	//! Access token stuff
-	**************************************************************/	
 	/**
 	 * Generates a new access token (or returns an existing one)
 	 * 
+	 * @param string $session_id The session ID number
+	 * 
 	 * @access public
-	 * @param string $session_id. (default: '')
 	 * @return string
 	 */
-	function get_access_token($session_id = '')
+	public function get_access_token($session_id = '')
 	{
 		// Check if an access token exists already
 		$exists_query = $this->ci->db
@@ -204,7 +206,7 @@ class Oauth_server {
 									));
 		
 		// If an access token already exists, return it and remove the authorization code
-		if ($exists_query->num_rows() == 1)
+		if ($exists_query->num_rows() === 1)
 		{
 			// Remove the authorization code
 			$this->ci->db
@@ -250,12 +252,13 @@ class Oauth_server {
 	/**
 	 * Validates an access token
 	 * 
+	 * @param string $access_token The access token
+	 * @param array  $scopes       Scopes to validate the access token against
+	 * 
 	 * @access public
-	 * @param string $access_token. (default: "")
-	 * @param array $scope. (default: array())
 	 * @return void
 	 */
-	function validate_access_token($access_token = '', $scopes = array())
+	public function validate_access_token($access_token = '', $scopes = array())
 	{
 		// Validate the token exists
 		$valid_token = $this->ci->db
@@ -265,7 +268,7 @@ class Oauth_server {
 									->get('oauth_sessions');
 		
 		// The access token doesn't exists
-		if ($valid_token->num_rows == 0)
+		if ($valid_token->num_rows === 0)
 		{
 			return FALSE;
 		}
@@ -286,7 +289,7 @@ class Oauth_server {
 												))
 												->count_all_results('oauth_session_scopes');
 					
-					if ($scope_exists == 0)
+					if ($scope_exists === 0)
 					{
 						return FALSE;
 					}
@@ -306,12 +309,13 @@ class Oauth_server {
 	/**
 	 * Tests if a user has already authorized an application and an access token has been granted
 	 * 
+	 * @param string $user_id   The user ID
+	 * @param string $client_id The client ID
+	 * 
 	 * @access public
-	 * @param string $user_id
-	 * @param string $client_id
 	 * @return bool
 	 */
-	function access_token_exists($user_id = '', $client_id = '')
+	public function access_token_exists($user_id = '', $client_id = '')
 	{
 		$token_query = $this->ci->db
 									->select('access_token')
@@ -334,11 +338,15 @@ class Oauth_server {
 		}
 	}
 	
-	/**************************************************************
-	//! Miscellaneous stuff
-	**************************************************************/
-
-	function scope_exists($scope)
+	/**
+	 * Tests if a scope exists in the database.
+	 *
+	 * @param string $scope The scope to be checked
+	 * 
+	 * @access public
+	 * @return bool
+	 */
+	public function scope_exists($scope = '')
 	{
 		$exists = $this->db
 							->where('scope', $scope)
@@ -348,7 +356,15 @@ class Oauth_server {
 		return ($exists === 1) ? TRUE : FALSE;
 	}
 	
-	function scope_details($scopes)
+	/**
+	 * Returns details about a scope
+	 * 
+	 * @param mixed $scopes The scope(s) details to be returned
+	 * 
+	 * @access public
+	 * @return object
+	 */
+	public function scope_details($scopes)
 	{
 		if (is_array($scopes))
 		{
@@ -368,32 +384,29 @@ class Oauth_server {
 		
 		if ($scope_details->num_rows() > 0)
 		{
-			foreach ($scope_details->result() as $s)
+			foreach ($scope_details->result() as $detail)
 			{
 				$scopes[] = array(
-					'name' => $s->name,
-					'description' => $s->description
+					'name' => $detail->name,
+					'description' => $detail->description
 				);
 			}
 		}
 		
-		return $scopes;	
-
+		return $scopes;
 	}
-	
-	/**************************************************************
-	//! Miscellaneous stuff
-	**************************************************************/
-	
+		
 	/**
 	 * Generates the redirect uri with appended params
 	 * 
+	 * @param string $redirect_uri    The redirect URI
+	 * @param array  $params          The parameters to be appended to the URL
+	 * @param string $query_delimeter The delimiter between the variables and the URL
+	 * 
 	 * @access public
-	 * @param string $redirect_uri. (default: "")
-	 * @param array $params. (default: array())
 	 * @return string
 	 */
-	function redirect_uri($redirect_uri = '', $params = array(), $query_delimeter = '?')
+	public function redirect_uri($redirect_uri = '', $params = array(), $query_delimeter = '?')
 	{
 		if (strstr($redirect_uri, $query_delimeter))
 		{
@@ -414,12 +427,20 @@ class Oauth_server {
 	 * Edit this function to suit your needs. It must return a user's id as a string
 	 * or FALSE if the sign in was incorrect
 	 * 
+	 * @param string $username The user's username
+	 * @param string $password The user's password
+	 * 
 	 * @access public
 	 * @return string|bool
 	 */
-	function validate_user($username = "", $password = "")
+	public function validate_user($username = '', $password = '')
 	{
 		// Your code here
 	}
 		
 }
+
+// END Oauth_server class
+
+// End of file Oauth_server.php
+// Location: ./application/libraries/OAuth_server.php
