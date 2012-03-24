@@ -2,26 +2,67 @@
 /**
  * OAuth 2.0 resource server library
  *
- * @author              Alex Bilbie | www.alexbilbie.com | alex@alexbilbie.com
- * @copyright   		Copyright (c) 2012, Alex Bilbie.
- * @license             http://www.opensource.org/licenses/mit-license.php
- * @link                https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server
- * @version             Version 0.2
+ * @category  Library
+ * @package   CodeIgniter
+ * @author    Alex Bilbie <alex@alexbilbie.com>
+ * @copyright 2012 Alex Bilbie
+ * @license   MIT Licencse http://www.opensource.org/licenses/mit-license.php
+ * @version   Version 0.2
+ * @link      https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server
  */
-
 class Oauth_resource_server
 {
-	private $access_token = NULL;
-	private $scopes = array();
-	private $type = NULL;
-	private $type_id = NULL;
 
+	/**
+	 * The access token.
+	 * 
+	 * @var $_access_token
+	 * @access private
+	 */
+	private $_access_token = NULL;
+
+	/**
+	 * The scopes the access token has access to.
+	 * 
+	 * @var $_scopes
+	 * @access private
+	 */
+	private $_scopes = array();
+
+	/**
+	 * The type of owner of the access token.
+	 * 
+	 * @var $_type
+	 * @access private
+	 */
+	private $_type = NULL;
+
+	/**
+	 * The ID of the owner of the access token.
+	 * 
+	 * @var $_type_id
+	 * @access private
+	 */
+	private $_type_id = NULL;
+
+	/**
+	 * Constructor
+	 * 
+	 * @access public
+	 * @return void
+	 */
 	public function __construct()
 	{
 		$this->ci = get_instance();
 		$this->init();
 	}
 	
+	/**
+	 * Init function
+	 * 
+	 * @access public
+	 * @return void
+	 */
 	public function init()
 	{		
 		switch ($this->ci->input->server('REQUEST_METHOD'))
@@ -47,19 +88,19 @@ class Oauth_resource_server
 		{
 			$session_query = $this->db->get_where('oauth_sessions', array('access_token' => $access_token, 'stage' => 'granted'));
 			
-			if ($session_query->num_rows() == 1)
+			if ($session_query->num_rows() === 1)
 			{
 				$session = $session_query->row();
-				$this->access_token = $session->access_token;
-				$this->type = $session->type;
-				$this->type_id = $session->type_id;
+				$this->_access_token = $session->access_token;
+				$this->_type = $session->type;
+				$this->_type_id = $session->type_id;
 				
 				$scopes_query = $this->db->get_where('oauth_session_scopes', array('access_token' => $access_token));
 				if ($scopes_query->num_rows() > 0)
 				{
 					foreach ($scopes_query->result() as $scope)
 					{
-						$this->scopes[] = $scope->scope;
+						$this->_scopes[] = $scope->scope;
 					}
 				}
 			}
@@ -78,31 +119,51 @@ class Oauth_resource_server
 		}
 	}
 	
+	/**
+	 * Test if the access token represents a user
+	 * 
+	 * @access public
+	 * @return string|bool
+	 */
 	public function is_user()
 	{
-		if ($this->type == 'user')
+		if ($this->_type === 'user')
 		{
-			return $this->type_id;
+			return $this->_type_id;
 		}
 		
 		return FALSE;
 	}
 	
+	/**
+	 * Test if the access token represents an applicatiom
+	 * 
+	 * @access public
+	 * @return string|bool
+	 */
 	public function is_anon()
 	{
-		if ($this->type == 'anon')
+		if ($this->_type === 'anon')
 		{
-			return $this->type_id;
+			return $this->_type_id;
 		}
 		
 		return FALSE;
 	}
 	
+	/**
+	 * Test if the access token has a specific scope
+	 * 
+	 * @param mixed $scopes Scope(s) to check
+	 * 
+	 * @access public
+	 * @return string|bool
+	 */
 	public function has_scope($scopes)
 	{
 		if (is_string($scopes))
 		{
-			if (in_array($scopes, $this->scopes))
+			if (in_array($scopes, $this->_scopes))
 			{
 				return TRUE;
 			}
@@ -114,7 +175,7 @@ class Oauth_resource_server
 		{
 			foreach ($scopes as $scope)
 			{
-				if ( ! in_array($scope, $this->scopes))
+				if ( ! in_array($scope, $this->_scopes))
 				{
 					return FALSE;
 				}
@@ -126,3 +187,8 @@ class Oauth_resource_server
 		return FALSE;
 	}
 }
+
+// END Oauth_resource_server class
+
+// End of file Oauth_resource_server.php
+// Location: ./application/libraries/Oauth_resource_server.php
