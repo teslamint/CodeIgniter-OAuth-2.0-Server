@@ -348,7 +348,7 @@ class Oauth_server
 	 */
 	public function scope_exists($scope = '')
 	{
-		$exists = $this->db
+		$exists = $this->ci->db
 							->where('scope', $scope)
 							->from('scopes')
 							->count_all_results();
@@ -368,14 +368,14 @@ class Oauth_server
 	{
 		if (is_array($scopes))
 		{
-			$scope_details = $this->db
+			$scope_details = $this->ci->db
 									->where_in('scope', $requested_scopes)
 									->get('scopes');
 		}
 		
 		else
 		{
-			$scope_details = $this->db
+			$scope_details = $this->ci->db
 									->where('scope', $requested_scopes)
 									->get('scopes');
 		}
