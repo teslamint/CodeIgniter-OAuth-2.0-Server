@@ -1,53 +1,53 @@
 CREATE TABLE `applications` (
-  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) NOT NULL DEFAULT '',
-  `client_id` varchar(32) NOT NULL DEFAULT '',
-  `client_secret` varchar(32) NOT NULL DEFAULT '',
-  `redirect_uri` varchar(250) NOT NULL DEFAULT '',
-  `auto_approve` tinyint(1) NOT NULL DEFAULT '0',
-  `autonomous` tinyint(1) NOT NULL DEFAULT '0',
-  `status` enum('development','pending','approved','rejected') NOT NULL DEFAULT 'development',
-  `suspended` tinyint(1) NOT NULL DEFAULT '0',
-  `notes` tinytext,
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(64) NOT NULL DEFAULT '',
+  `client_id` VARCHAR(32) NOT NULL DEFAULT '',
+  `client_secret` VARCHAR(32) NOT NULL DEFAULT '',
+  `redirect_uri` VARCHAR(250) NOT NULL DEFAULT '',
+  `auto_approve` TINYINT(1) NOT NULL DEFAULT '0',
+  `autonomous` TINYINT(1) NOT NULL DEFAULT '0',
+  `status` ENUM('development','pending','approved','rejected') NOT NULL DEFAULT 'development',
+  `suspended` TINYINT(1) NOT NULL DEFAULT '0',
+  `notes` TINYTEXT,
   PRIMARY KEY (`id`),
   UNIQUE KEY `client_id` (`client_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8;
+) ENGINE=INNODB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `scopes` (
-  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `scope` varchar(64) NOT NULL DEFAULT '',
-  `name` varchar(64) NOT NULL DEFAULT '',
-  `description` varchar(100) DEFAULT '',
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `scope` VARCHAR(64) NOT NULL DEFAULT '',
+  `name` VARCHAR(64) NOT NULL DEFAULT '',
+  `description` VARCHAR(100) DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `scope` (`scope`)
-) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8;
+) ENGINE=INNODB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `oauth_sessions` (
-  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `client_id` varchar(32) NOT NULL DEFAULT '',
-  `redirect_uri` varchar(250) NOT NULL DEFAULT '',
-  `type_id` varchar(64) DEFAULT NULL,
-  `type` enum('user','auto') NOT NULL DEFAULT 'user',
-  `code` text,
-  `access_token` varchar(50) DEFAULT '',
-  `stage` enum('request','granted') NOT NULL DEFAULT 'request',
-  `first_requested` int(10) unsigned NOT NULL,
-  `last_updated` int(10) unsigned NOT NULL,
-  `limited_access` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Used for user agent flows',
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `client_id` VARCHAR(32) NOT NULL DEFAULT '',
+  `redirect_uri` VARCHAR(250) NOT NULL DEFAULT '',
+  `type_id` VARCHAR(64) DEFAULT NULL,
+  `type` ENUM('user','auto') NOT NULL DEFAULT 'user',
+  `code` TEXT,
+  `access_token` VARCHAR(50) DEFAULT '',
+  `stage` ENUM('request','granted') NOT NULL DEFAULT 'request',
+  `first_requested` INT(10) UNSIGNED NOT NULL,
+  `last_updated` INT(10) UNSIGNED NOT NULL,
+  `limited_access` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Used for user agent flows',
   PRIMARY KEY (`id`),
   KEY `client_id` (`client_id`),
   CONSTRAINT `oauth_sessions_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `applications` (`client_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=161 DEFAULT CHARSET=utf8;
+) ENGINE=INNODB AUTO_INCREMENT=161 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `oauth_session_scopes` (
-  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `session_id` int(11) unsigned NOT NULL,
-  `access_token` varchar(50) NOT NULL DEFAULT '',
-  `scope` varchar(64) NOT NULL DEFAULT '',
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `session_id` INT(11) UNSIGNED NOT NULL,
+  `access_token` VARCHAR(50) NOT NULL DEFAULT '',
+  `scope` VARCHAR(64) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `session_id` (`session_id`),
   KEY `scope` (`scope`),
   KEY `access_token` (`access_token`),
   CONSTRAINT `oauth_session_scopes_ibfk_1` FOREIGN KEY (`scope`) REFERENCES `scopes` (`scope`),
   CONSTRAINT `oauth_session_scopes_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `oauth_sessions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=430 DEFAULT CHARSET=utf8;
+) ENGINE=INNODB AUTO_INCREMENT=430 DEFAULT CHARSET=utf8;
