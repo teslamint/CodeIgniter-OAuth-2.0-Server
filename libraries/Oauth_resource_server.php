@@ -86,7 +86,7 @@ class Oauth_resource_server
 		
 		if ($access_token)
 		{
-			$session_query = $this->db->get_where('oauth_sessions', array('access_token' => $access_token, 'stage' => 'granted'));
+			$session_query = $this->ci->db->get_where('oauth_sessions', array('access_token' => $access_token, 'stage' => 'granted'));
 			
 			if ($session_query->num_rows() === 1)
 			{
@@ -95,7 +95,7 @@ class Oauth_resource_server
 				$this->_type = $session->type;
 				$this->_type_id = $session->type_id;
 				
-				$scopes_query = $this->db->get_where('oauth_session_scopes', array('access_token' => $access_token));
+				$scopes_query = $this->ci->db->get_where('oauth_session_scopes', array('access_token' => $access_token));
 				if ($scopes_query->num_rows() > 0)
 				{
 					foreach ($scopes_query->result() as $scope)
