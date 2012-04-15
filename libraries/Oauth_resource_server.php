@@ -64,24 +64,55 @@ class Oauth_resource_server
 	 * @return void
 	 */
 	public function init()
-	{		
+	{
+		// Try and get the access token via an access_token or oauth_token parameter
 		switch ($this->ci->input->server('REQUEST_METHOD'))
 		{
 			default:
 				$access_token = $this->ci->input->get('access_token');
+				if ( ! $access_token)
+				{
+					$access_token = $this->ci->input->get('oauth_token');
+				}
 				break;
 				
 			case 'PUT':
 				$access_token = $this->ci->put('access_token'); // assumes you're using https://github.com/philsturgeon/codeigniter-restserver
+				if ( ! $access_token)
+				{
+					$access_token = $this->ci->put('oauth_token');
+				}
 				break;
 			
 			case 'POST':
 				$access_token = $this->ci->input->post('access_token');
+				if ( ! $access_token)
+				{
+					$access_token = $this->ci->input->post('oauth_token');
+				}
 				break;
 				
 			case 'DELETE':
-				$access_token = $this->ci->delete('access_token'); // https://github.com/philsturgeon/codeigniter-restserver
+				$access_token = $this->ci->delete('access_token'); // assumes you're using https://github.com/philsturgeon/codeigniter-restserver
+				if ( ! $access_token)
+				{
+					$access_token = $this->ci->delete('oauth_token');
+				}
 				break;
+		}
+
+		// Try and get an access token from the auth header
+		if (function_exists('apache_request_headers'))
+		{
+			$headers = apache_request_headers();
+			if (isset($headers['Authorization']))
+			{
+				$raw_token = trim(str_replace(array('OAuth', 'Bearer'), array('', ''), $headers['Authorization']));
+				if ( ! empty($raw_token))
+				{
+					$access_token = $raw_token;
+				}
+			}
 		}
 		
 		if ($access_token)
