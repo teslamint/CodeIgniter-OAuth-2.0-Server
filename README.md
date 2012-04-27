@@ -23,7 +23,8 @@ This is an implementation of an OAuth 2.0 (draft 23) authorisation server using 
 ```php  
 	function user_get($id)
 	{
-		if ( ! $this->oauth_resource_server->validate(array('user.details', 'another.scope')))
+		$this->load->library('oauth_resource_server');
+		if ( ! $this->oauth_resource_server->has_scope(array('user.details', 'another.scope')))
 		{
 			// Error logic here - "access token does not have correct permission to user this API method"
 		}
