@@ -268,7 +268,7 @@ class Oauth_server
 									->get('oauth_sessions');
 		
 		// The access token doesn't exists
-		if ($valid_token->num_rows === 0)
+		if ($valid_token->num_rows() === 0)
 		{
 			return FALSE;
 		}
@@ -369,14 +369,14 @@ class Oauth_server
 		if (is_array($scopes))
 		{
 			$scope_details = $this->ci->db
-									->where_in('scope', $requested_scopes)
+									->where_in('scope', $scopes)
 									->get('scopes');
 		}
 		
 		else
 		{
 			$scope_details = $this->ci->db
-									->where('scope', $requested_scopes)
+									->where('scope', $scopes)
 									->get('scopes');
 		}
 		
@@ -410,7 +410,7 @@ class Oauth_server
 	{
 		if (strstr($redirect_uri, $query_delimeter))
 		{
-			$redirect_uri = $redirect_uri . http_build_query($params);
+			$redirect_uri = $redirect_uri . '&' . http_build_query($params);
 		}
 		else
 		{

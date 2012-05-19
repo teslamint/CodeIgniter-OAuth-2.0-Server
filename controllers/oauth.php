@@ -66,7 +66,7 @@ class Oauth extends CI_Controller
 			
 			if ( ! in_array($response_type, $valid_response_types))
 			{
-				$this->_fail('unsupported_response_type', 'The authorization server does not support obtaining an authorization code using this method. Supported response types are \'' . implode('\' or ', $valid_response_type) . '\'.', $params['redirect_uri'], array(), 400);
+				$this->_fail('unsupported_response_type', 'The authorization server does not support obtaining an authorization code using this method. Supported response types are \'' . implode('\' or ', $valid_response_types) . '\'.', $params['redirect_uri'], array(), 400);
 				return;
 			}
 			
@@ -118,7 +118,7 @@ class Oauth extends CI_Controller
 				$exists = $this->oauth_server->scope_exists($s);
 				if ( ! $exists)
 				{
-					$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See scope \''.$s.'\'.', NULL, array(), 400);
+					$this->_fail('invalid_scope', 'The requested scope is invalid, unknown, or malformed. See scope \''.$s.'\'.', NULL, array(), 400);
 					return;
 				}
 			}
@@ -224,9 +224,7 @@ class Oauth extends CI_Controller
 			}
 		}
 		
-		$this->load->view('inc/head');
-		$this->load->view('oauth/sign_in', $vars);	
-		$this->load->view('inc/foot');
+		$this->load->view('oauth_auth_server/sign_in', $vars);	
 	}
 	
 	
@@ -244,7 +242,7 @@ class Oauth extends CI_Controller
 		
 		else
 		{
-			$this->load->view('oauth_server/sign_out');
+			$this->load->view('oauth_auth_server/sign_out');
 		}
 		
 	}
@@ -299,9 +297,12 @@ class Oauth extends CI_Controller
 						'error' => 'access_denied',
 						'error_description' => 'The resource owner or authorization server denied the request.'
 					);
-					if ($params['state']){ $error_params['state'] = $params['state']; }				
+					if ($params['state'])
+					{ 
+						$error_params['state'] = $params['state']; 
+					}				
 					
-					$redirect_uri = $this->oauth_server->redirect_uri($params['redirect_uri'], implode('&', $error_params));
+					$redirect_uri = $this->oauth_server->redirect_uri($params['redirect_uri'], $error_params);
 					$this->session->unset_userdata(array('params'=>'','client_details'=>'', 'sign_in_redirect'=>''));
 					redirect($redirect_uri, 'location');
 					
@@ -340,9 +341,7 @@ class Oauth extends CI_Controller
 					'scopes' => $scopes
 				);
 				
-				$this->load->view('inc/head');
-				$this->load->view('oauth/authorise', $vars);
-				$this->load->view('inc/foot');
+				$this->load->view('oauth_auth_server/authorise', $vars);
 			
 			break;
 			
@@ -524,8 +523,8 @@ class Oauth extends CI_Controller
 		if ($url)
 		{
 			$error_params = array(
-				'error=' . $error,
-				'error_description=' . urlencode($description)
+				'error' . $error,
+				'error_description' . urlencode($description)
 			);
 						
 			$params = array_merge($params, $error_params);
@@ -546,7 +545,7 @@ class Oauth extends CI_Controller
 					$this->output->set_status_header($status);
 					$this->output->set_output(json_encode(array(
 						'error'			=>	1,
-						'error_message'	=>	'[OAuth error: ' . $error . '] ' . $description,
+						'error_description'	=>	'[OAuth error: ' . $error . '] ' . $description,
 						'access_token'	=>	NULL
 					)));
 				break;
@@ -566,7 +565,7 @@ class Oauth extends CI_Controller
 	private function _response($msg)
 	{
 		$msg['error'] = 0;
-		$msg['error_message'] = '';
+		$msg['error_description'] = '';
 		$this->output->set_status_header('200');
 		$this->output->set_header('Content-type: application/json');
 		$this->output->set_output(json_encode($msg));	
