@@ -8,10 +8,10 @@
  * @link                https://github.com/alexbilbie/CodeIgniter-OAuth-2.0-Server
  * @version             Version 0.2
  */
- 
+
 class Oauth extends CI_Controller
 {
-	
+		
 	/**
 	 * __construct function.
 	 * 
@@ -57,7 +57,7 @@ class Oauth extends CI_Controller
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See redirect_uri.', NULL, array(), 400);
 			return;
 		}
-				
+		
 		// Validate the response type
 		if ($response_type = $this->input->get('response_type'))
 		{
@@ -65,13 +65,13 @@ class Oauth extends CI_Controller
 			$valid_response_types = array('code'); // array to allow for future expansion
 			
 			if ( ! in_array($response_type, $valid_response_types))
-		{
-				$this->_fail('unsupported_response_type', 'The authorization server does not support obtaining an authorization code using this method. Supported response types are \'' . implode('\' or ', $valid_response_type) . '\'.', $params['redirect_uri'], array(), 400);
-			return;
-		}
-		
+			{
+				$this->_fail('unsupported_response_type', 'The authorization server does not support obtaining an authorization code using this method. Supported response types are \'' . implode('\' or ', $valid_response_types) . '\'.', $params['redirect_uri'], array(), 400);
+				return;
+			}
+			
 			else
-		{
+			{
 				$params['response_type'] = $response_type;
 			}
 		}
@@ -81,16 +81,16 @@ class Oauth extends CI_Controller
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See response_type.', NULL, array(), 400);
 			return;
 		}
-		
+				
 		// Validate client_id and redirect_uri
 		$client_details = $this->oauth_server->validate_client($params['client_id'], NULL, $params['redirect_uri']); // returns object or FALSE
-
+		
 		if ($client_details === FALSE )
 		{
 			$this->_fail('unauthorized_client', 'The client is not authorized to request an authorization code using this method.', NULL, array(), 403);
 			return;
 		}
-				
+		
 		else
 		{
 			// The client is valid, save the details to the session
@@ -100,13 +100,13 @@ class Oauth extends CI_Controller
 		
 		// Get and validate the scope(s)
 		if ($scope_string = $this->input->get('scope'))
-			{
+		{
 			$scopes = explode(',', $scope_string);
 			$params['scope'] = $scopes;
-			}
+		}
 		
 		else
-			{
+		{
 			$params['scope'] = array();
 		}
 		
@@ -118,17 +118,17 @@ class Oauth extends CI_Controller
 				$exists = $this->oauth_server->scope_exists($s);
 				if ( ! $exists)
 				{
-					$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See scope \''.$s.'\'.', NULL, array(), 400);
+					$this->_fail('invalid_scope', 'The requested scope is invalid, unknown, or malformed. See scope \''.$s.'\'.', NULL, array(), 400);
 					return;
 				}
-				}
 			}
-						
-			else
-			{
+		}
+		
+		else
+		{
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See scope.', NULL, array(), 400);
 			return;
-			}
+		}
 
 		// The client is valid, save the details to the session
 		$this->session->set_userdata('client_details', $client_details);
@@ -148,8 +148,8 @@ class Oauth extends CI_Controller
 		$this->session->set_userdata(array('params' => $params));
 		
 		// Redirect the user to sign in
-			redirect(site_url(array('oauth', 'sign_in')), 'location');
-		}
+		redirect(site_url(array('oauth', 'sign_in')), 'location');
+	}
 	
 	function sign_in()
 	{
@@ -224,9 +224,7 @@ class Oauth extends CI_Controller
 			}
 		}
 		
-		$this->load->view('inc/head');
-		$this->load->view('oauth/sign_in', $vars);	
-		$this->load->view('inc/foot');
+		$this->load->view('oauth_auth_server/sign_in', $vars);	
 	}
 	
 	
@@ -244,7 +242,7 @@ class Oauth extends CI_Controller
 		
 		else
 		{
-			$this->load->view('oauth_server/sign_out');
+			$this->load->view('oauth_auth_server/sign_out');
 		}
 		
 	}
@@ -283,7 +281,7 @@ class Oauth extends CI_Controller
 		// Has the user authorised the application?
 		$doauth = $this->input->post('doauth');
 		if ($doauth)
-		{
+		{		
 			switch($doauth)
 			{
 				// The user has approved the application.
@@ -299,19 +297,22 @@ class Oauth extends CI_Controller
 						'error' => 'access_denied',
 						'error_description' => 'The resource owner or authorization server denied the request.'
 					);
-					if ($params['state']){ $error_params['state'] = $params['state']; }				
+					if ($params['state'])
+					{ 
+						$error_params['state'] = $params['state']; 
+					}				
 					
-					$redirect_uri = $this->oauth_server->redirect_uri($params['redirect_uri'], implode('&', $error_params));
+					$redirect_uri = $this->oauth_server->redirect_uri($params['redirect_uri'], $error_params);
 					$this->session->unset_userdata(array('params'=>'','client_details'=>'', 'sign_in_redirect'=>''));
 					redirect($redirect_uri, 'location');
 					
 				break;
 				
-			}	
+			}
 		}
 		
 		else
-		{			
+		{
 			// Does the user already have an access token?
 			$authorised = $this->oauth_server->access_token_exists($user_id, $client->client_id);
 			
@@ -334,32 +335,30 @@ class Oauth extends CI_Controller
 			
 				$requested_scopes = $params['scope'];
 				$scopes = $this->oauth_server->scope_details($requested_scopes);
-		
+			
 				$vars = array(
 					'client_name' => $client->name,
 					'scopes' => $scopes
 				);
-		
-				$this->load->view('inc/head');
-				$this->load->view('oauth/authorise', $vars);
-				$this->load->view('inc/foot');
-								
-				break;
 				
+				$this->load->view('oauth_auth_server/authorise', $vars);
+			
+			break;
+			
 			case 'newrequest':
 			
 				$code = $this->oauth_server->new_auth_code($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $authorised->access_token);
 				
 				$this->fast_code_redirect($params['redirect_uri'], $params['state'], $code);
-				
-				break;
-				
+			
+			break;
+			
 			case 'finish':
-			
+
 				$code = $this->oauth_server->new_auth_code($client->client_id, $user_id, $params['redirect_uri'], $params['scope'], $authorised->access_token);
-		
+				
 				$this->fast_token_redirect($params['redirect_uri'], $params['state'], $code);
-			
+				
 			break;
 		}
 	}
@@ -383,7 +382,7 @@ class Oauth extends CI_Controller
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See client_id.', NULL, array(), 400, 'json');
 			return;
 		}
-				
+		
 		// Client secret
 		if ($client_secret = $this->input->post('client_secret'))
 		{
@@ -395,43 +394,43 @@ class Oauth extends CI_Controller
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See client_secret.', NULL, array(), 400, 'json');
 			return;
 		}
-		
+				
 		// Client redirect uri
 		if ($redirect_uri = $this->input->post('redirect_uri'))
 		{
 			$params['redirect_uri'] = urldecode(trim($redirect_uri));
 		}
-			
+		
 		else
-				{
+		{
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See redirect_uri.', NULL, array(), 400, 'json');
-					return;
-				}
-				
+			return;
+		}
+		
 		if ($code = $this->input->post('code'))
 		{
 			$params['code'] = trim($code);
 		}
-				
+		
 		else
 		{
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See code.', NULL, array(), 400, 'json');
-				return;
+			return;
 		}
-			
+		
 		// Validate the grant type
 		if ($grant_type = $this->input->post('grant_type'))
 		{
 			$grant_type = trim($grant_type);
-
+			
 			if ( ! in_array($grant_type, array('authorization_code')))
 			{
 				$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See grant_type.', NULL, array(), 400, 'json');
 				return;
-		}	
-		
+			}
+			
 			else
-	{
+			{
 				$params['grant_type'] = $grant_type;
 			}
 		}
@@ -441,7 +440,7 @@ class Oauth extends CI_Controller
 			$this->_fail('invalid_request', 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed. See grant_type.', NULL, array(), 400, 'json');
 			return;
 		}
-						
+				
 		// Validate client_id and redirect_uri
 		$client_details = $this->oauth_server->validate_client($params['client_id'], $params['client_secret'], $params['redirect_uri']); // returns object or FALSE
 		
@@ -453,27 +452,27 @@ class Oauth extends CI_Controller
 		
 		// Respond to the grant type
 		switch ($params['grant_type'])
-		{		
+		{
 			case "authorization_code":
 			
 				// Validate the auth code
 				$session = $this->oauth_server->validate_auth_code($params['code'], $params['client_id'], $params['redirect_uri']);
-		
+
 				if ($session === FALSE)
-		{
+				{
 					$this->_fail('invalid_request', 'The authorization code is invalid.', NULL, array(), 403, 'json');
-			return;
-		}
-		
+					return;
+				}
+				
 				// Generate a new access_token (and remove the authorise code from the session)
 				$access_token = $this->oauth_server->get_access_token($session->id);
-
+				
 				// Send the response back to the application
 				$this->_response(array('access_token' => $access_token));
 				return;
 			
 			break;
-	}
+		}
 	}	
 	
 	/**
@@ -524,8 +523,8 @@ class Oauth extends CI_Controller
 		if ($url)
 		{
 			$error_params = array(
-				'error=' . $error,
-				'error_description=' . urlencode($description)
+				'error' . $error,
+				'error_description' . urlencode($description)
 			);
 						
 			$params = array_merge($params, $error_params);
@@ -546,7 +545,7 @@ class Oauth extends CI_Controller
 					$this->output->set_status_header($status);
 					$this->output->set_output(json_encode(array(
 						'error'			=>	1,
-						'error_message'	=>	'[OAuth error: ' . $error . '] ' . $description,
+						'error_description'	=>	'[OAuth error: ' . $error . '] ' . $description,
 						'access_token'	=>	NULL
 					)));
 				break;
@@ -566,7 +565,7 @@ class Oauth extends CI_Controller
 	private function _response($msg)
 	{
 		$msg['error'] = 0;
-		$msg['error_message'] = '';
+		$msg['error_description'] = '';
 		$this->output->set_status_header('200');
 		$this->output->set_header('Content-type: application/json');
 		$this->output->set_output(json_encode($msg));	
